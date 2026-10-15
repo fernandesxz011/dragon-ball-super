@@ -7,8 +7,41 @@ export const effectThemes = {
 } as const
 
 export const effectQuality = {
-  desktop: { particles: 200, maxDpr: 1.5, renderInterval: 1000 / 45, edgeWidth: 180 },
-  compact: { particles: 64, maxDpr: 1, renderInterval: 1000 / 30, edgeWidth: 40 },
+  desktop: {
+    particles: 200, maxDpr: 1.5, renderInterval: 1000 / 45,
+    particleMinSize: 6, particleMaxSize: 18,
+    ribbonCoreWidth: 1.65, ribbonGlowWidth: 12, ribbonStrength: 1.15,
+  },
+  compact: {
+    particles: 64, maxDpr: 1, renderInterval: 1000 / 30,
+    particleMinSize: 4, particleMaxSize: 10,
+    ribbonCoreWidth: 1.35, ribbonGlowWidth: 9, ribbonStrength: 1,
+  },
+} as const
+
+export type EffectQuality = (typeof effectQuality)[keyof typeof effectQuality]
+
+export const energyField = {
+  streakRatio: 0.2,
+  streakLength: 2.3,
+  maxSpritePixels: 64,
+  depthRange: 360,
+  maskFeather: 12,
+  maskPadding: 12,
+  motionPadding: 44,
+  artScaleAllowance: 0.013,
+  ribbonStart: 0.5,
+} as const
+
+export const orbInteraction = {
+  proximityRadiusScale: 1.6,
+  proximityInnerScale: 0.75,
+  proximityMinRadius: 150,
+  normalizationScale: 0.55,
+  pointerTilt: 0.27,
+  maxTilt: 0.3,
+  floatAmplitude: 0.045,
+  easing: 6,
 } as const
 
 export const maxProtectedRects = 24

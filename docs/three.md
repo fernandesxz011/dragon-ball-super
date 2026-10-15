@@ -1,8 +1,8 @@
 # Three.js — Etapa 04
 
-A cena acrescenta uma esfera de quatro estrelas com arcos orbitais e partículas nas bordas e junto ao solo usando **Three.js puro 0.186.1**, integrado por effects do React. **Motion 14.2.0** continua responsável pelas entradas e pelo movimento das artes em HTML. Os personagens permanecem nas imagens, com o conteúdo e a navegação disponíveis antes do carregamento do efeito.
+A cena acrescenta uma esfera de quatro estrelas com arcos orbitais, partículas de primeiro plano distribuídas pelo quadro e três filamentos luminosos sobre a região inferior das artes, usando **Three.js puro 0.186.1**, integrado por effects do React. **Motion 14.2.0** continua responsável pelas entradas e pelo movimento das artes em HTML. Os personagens permanecem nas imagens, com o conteúdo e a navegação disponíveis antes do carregamento do efeito.
 
-Os efeitos começam automaticamente na abertura e acompanham a rolagem, sem checkbox, opt-in ou tela de ativação. A preferência de movimento reduzido mantém a apresentação estática.
+Os efeitos começam automaticamente na abertura e acompanham a rolagem, sem checkbox, opt-in ou tela de ativação. A preferência de movimento reduzido de cada visitante mantém a apresentação estática. O aplicativo consulta essa preferência; o diagnóstico das configurações de animação no computador de desenvolvimento não é uma funcionalidade do site.
 
 ## Dependências e referências oficiais
 
@@ -15,7 +15,7 @@ As versões estão fixadas no `package.json` e no lockfile. A integração usa o
 
 `src/effects/EnergyEffects.tsx` espera a conclusão de `decode()` da imagem prioritária `.hero__image` antes de importar `energy-scene.ts`. Uma falha no decode libera a tentativa do efeito, sem impedir o restante da página. O módulo opcional tem uma promise compartilhada e uma guarda de desmontagem, para impedir a criação tardia de uma cena depois da troca de preferência ou desmontagem.
 
-`src/effects/energy-scene.ts` cria **um canvas ativo**, transparente e fixo sobre a viewport, compartilhado pela esfera e pelo campo de partículas. O contexto WebGL2 solicita `powerPreference: 'low-power'`; antialiasing é habilitado no modo desktop. A saída usa `SRGBColorSpace`. O host e o canvas são decorativos, com `aria-hidden` e sem eventos de ponteiro que interceptem os controles.
+`src/effects/energy-scene.ts` cria **um canvas ativo**, transparente e fixo sobre a viewport, compartilhado pela esfera, órbitas, partículas e filamentos. O contexto WebGL2 solicita `powerPreference: 'low-power'`; antialiasing é habilitado no modo desktop. A saída usa `SRGBColorSpace`. O host e o canvas são decorativos, com `aria-hidden` e sem eventos de ponteiro que interceptem os controles.
 
 A cena usa uma **OrthographicCamera**, com limites ajustados à área CSS do host (`host.clientWidth` e `host.clientHeight`) e posição Z de 1000. Medir o host evita incluir a largura da scrollbar no canvas e nas coordenadas da cena. A projeção preserva o formato circular da esfera mesmo no espaço lateral reservado no layout, mantendo as quatro estrelas frontais. A independência entre escala e distância é descrita no [código oficial de OrthographicCamera](https://raw.githubusercontent.com/mrdoob/three.js/r186/src/cameras/OrthographicCamera.js).
 
@@ -31,7 +31,7 @@ As estrelas usam `MeshBasicMaterial` vermelho `#f21e32`, alpha **0.98**, `toneMa
 
 É uma aproximação de volume e translucidez, sem refração física, transmission, texturas de ambiente ou bloom. A luz aparente é calculada no shader, sem luzes globais na cena. O shader usa as matrizes fornecidas pelo Three e a conversão de cor de saída; seu contrato é descrito na [documentação oficial de ShaderMaterial](https://threejs.org/docs/pages/ShaderMaterial.html).
 
-A animação aplica flutuação curta e rotação lenta ao grupo interno; a posição externa continua sob controle do espaço reservado no layout. No desktop, movimento de mouse acrescenta uma inclinação pequena e suavizada. No modo compacto, não há resposta ao ponteiro.
+A animação aplica flutuação curta e rotação lenta ao grupo interno; a posição externa continua sob controle do espaço reservado no layout. No desktop, o mouse é normalizado em relação ao centro e ao tamanho do slot. A resposta perde força fora da proximidade da esfera e volta suavemente ao repouso quando o ponteiro se afasta ou sai da janela. O fator de ponteiro é **0.27 rad**, aproximadamente 15,5°, com inclinação total limitada a **±0.3 rad**, aproximadamente 17,2°, e suavização exponencial de fator 6. A flutuação permanece em 0.045 unidade local. No modo compacto, não há resposta ao ponteiro.
 
 ## Arcos orbitais locais
 
@@ -46,16 +46,26 @@ Os parâmetros estão centralizados em `src/effects/config.ts`:
 | Parâmetro | Desktop, a partir de 901 px com ponteiro fino/hover | Compacto, até 900 px ou sem ponteiro fino/hover |
 | --- | ---: | ---: |
 | Partículas | 200 | 64 |
+| Tamanho-base das partículas em px CSS | 6–18 | 4–10 |
+| Seleção configurada de rastros alongados | 20% | 20% |
+| Miolo / halo dos filamentos em px CSS | 1.65 / 12 | 1.35 / 9 |
 | DPR máximo | 1.5 | 1 |
 | Intervalo mínimo de renderização | `1000 / 45` ms | `1000 / 30` ms |
-| Largura máxima de cada borda com partículas | 180 px | 40 px |
 | Antialiasing | Habilitado | Desabilitado |
 
 **45 e 30 são parâmetros do throttle, não FPS medidos ou garantidos.** O resultado real depende do navegador e do dispositivo. Cada dimensão do drawing buffer é limitada a **4096 px**: o DPR efetivo é o menor entre o DPR do dispositivo, o limite do modo, `4096 / largura` e `4096 / altura`, usando as dimensões CSS do host. Em viewports muito grandes, pode ficar abaixo de 1.
 
 O modo compacto também cobre celulares em landscape e dispositivos touch com tela larga. A consulta `(hover: hover) and (pointer: fine)`, combinada ao breakpoint de 901 px, autoriza a qualidade desktop e o listener passivo de mouse. O tamanho da esfera segue o espaço reservado pelo CSS. A configuração é reavaliada na criação da cena e nas mudanças do breakpoint existente.
 
-`src/effects/particles.ts` usa uma única `BufferGeometry`, atributos tipados e um `ShaderMaterial`. A distribuição é determinística e o movimento ocorre no shader. As posições mantêm profundidade Z; o shader atenua XY e tamanho em função dessa profundidade, preservando a variação espacial do campo mesmo com câmera ortográfica. O tamanho dos pontos é limitado a 16 pixels físicos, e o brilho é calculado no próprio fragment shader, sem pós-processamento.
+`src/effects/particles.ts` usa uma única `BufferGeometry`, atributos tipados e um `ShaderMaterial` aditivo. A distribuição determinística cobre o quadro, sem bloqueio fixo do centro. O movimento ocorre no shader, com profundidade Z distribuída em 360 unidades e atenuação de XY/tamanho por distância, mesmo com câmera ortográfica. Os tamanhos-base CSS são multiplicados pelo DPR efetivo; a profundidade e o alongamento dos rastros também alteram o tamanho final. O teto de cada sprite é **64 pixels físicos**.
+
+Cerca de **20%** das sementes recebem um rastro com fator de comprimento **2.3** e perfil estreito inclinado; as demais usam brilho radial. O fragment shader descarta a área externa do sprite antes de consultar as máscaras, e calcula miolo e halo sem textura, bloom ou pós-processamento. O campo usa `renderOrder: -1`.
+
+## Filamentos de primeiro plano
+
+`src/effects/energy-ribbons.ts` acrescenta **um mesh**, com `PlaneGeometry` e um `ShaderMaterial` aditivo. Três curvas sinusoidais formam filamentos de miolo claro e halo colorido, concentrados na região inferior da arte. O quad é limitado à **metade inferior da área real de imagem** da cena predominante, depois do cálculo de `contain`/`cover`; não ocupa a viewport inteira. O retângulo de referência vem do layout de repouso, sem herdar um ponto arbitrário do parallax.
+
+O shader descarta pixels fora do envelope luminoso antes do loop de até 24 máscaras. Filamentos e partículas compartilham os **mesmos objetos de uniforms** de tempo, DPR, viewport, paleta, intensidade, dispersão e retângulos protegidos. O tempo é atualizado pelo loop existente; não há RAF, renderer, listener de scroll ou cópia de medições independente. O shader dos filamentos não usa ruído procedural. O mesh usa `renderOrder: -2`, atrás das partículas e das passagens da esfera/órbitas.
 
 ## Scroll compartilhado e cores
 
@@ -71,33 +81,52 @@ A cena predominante é escolhida pela maior pontuação de altura visível, com 
 | Super Hero | `#b29aef` | `#efd18f` | 0.82 | 0.4 |
 | Black Freeza | `#9771d1` | `#e2dced` | 0.68 | 0.8 |
 
-Essas cores são parâmetros de direção visual do projeto conceitual. A esfera mantém seu acabamento âmbar; os temas alteram o campo de partículas.
+Essas cores são parâmetros de direção visual do projeto conceitual. A esfera mantém seu acabamento âmbar; os temas alteram partículas e filamentos em conjunto.
 
 ## Proteção do conteúdo
 
-O fragment shader descarta partículas no centro dos **78% superiores da viewport**, mantendo-as nas duas bordas nessa área. A largura efetiva de cada borda é o menor valor entre o limite do modo e **15% da largura da viewport**. Nos **22% inferiores**, o campo também pode atravessar o centro, criando uma faixa de energia junto ao solo.
+Até **24 retângulos visíveis** protegem cabeçalho, índice, seção sobre, rodapé, títulos, descrições, ação de explorar e regiões específicas dos personagens. As coordenadas em `data-protect-region` são normalizadas no formato `x,y,largura,altura`; múltiplas regiões são separadas por `;`. Valores inválidos usam a imagem inteira como proteção conservadora.
 
-Até **24 retângulos visíveis** protegem cabeçalho, índice, seção sobre, rodapé, títulos, descrições, ação de explorar e regiões dos personagens. As imagens usam `data-protect-region` com coordenadas normalizadas: **`0.46,0,0.54,0.82`** na abertura e **`0.38,0,0.62,0.84`** nas sagas. A máscara cobre essas regiões de interesse, em vez de bloquear cada imagem inteira; o cálculo considera o recorte alinhado à direita usado no modo compacto.
+| Arte | Região normalizada atual | Área protegida |
+| --- | --- | --- |
+| Abertura | `0.48,0,0.49,0.46` | Rostos e parte superior de Goku e Vegeta |
+| Moro | `0.54,0,0.44,0.65` | Rosto, chifres e parte superior |
+| Granolah | `0.47,0.08,0.44,0.66` | Rosto, cabelo e visor |
+| Super Hero | `0.55,0,0.43,0.6` | Rosto e cabelo de Gohan Beast |
+| Black Freeza | `0.55,0.02,0.35,0.5` | Rosto e parte superior de Freeza |
+| Black Freeza, fundo | `0.88,0.72,0.1,0.22` | Goku e Vegeta pequenos ao fundo |
 
-Os limites são medidos no layout; a posição das máscaras e da esfera usa o valor atual de `window.scrollY` em cada frame renderizado. Isso mantém a proteção alinhada ao documento mesmo entre atualizações das medições do Motion. A seleção de saga, o progresso compartilhado e a paleta continuam sob responsabilidade da ponte Motion. Os retângulos comuns recebem margem de **12 px**; elementos com `data-reveal`, o H1 e os grupos de título recebem **44 px**. As regiões de personagens têm margem horizontal de **12 px** e vertical de **44 px**, abrangendo o deslocamento da arte. `ResizeObserver` no conteúdo, no espaço da esfera e no host, junto ao evento de resize, invalida essas medidas quando o layout muda.
+`imageLayoutBounds()` neutraliza o translate do `picture` e o scale centrado do `img` usando `DOMMatrixReadOnly`. O cache representa o repouso, evitando que um snapshot em +36 px fique 72 px distante do extremo −36 px do parallax. `imagePlacement()` considera a proporção nativa ou declarada, `object-fit: contain`/`cover` e `object-position`, incluindo centro no desktop e alinhamento à direita no compacto. As regiões são limitadas à caixa visível da imagem.
 
-As máscaras atuam no campo de partículas. A esfera e seus arcos são posicionados exclusivamente no espaço decorativo da abertura; sua geometria também precisa de folga no layout, pois não usa essas máscaras. Nenhum personagem foi separado do raster ou convertido em modelo 3D, e os efeitos não criam camadas independentes nas artes.
+Os retângulos comuns recebem margem de **12 px**; elementos com `data-reveal`, H1 e grupos de título recebem **44 px**. As regiões de personagens recebem margens horizontal/vertical de **12/44 px**, mais **1.3%** da largura/altura da caixa para cobrir o scale de entrada 1.025. O shader compartilhado mantém **alpha zero no interior** dos retângulos e aplica um fade de **12 px somente pelo lado externo**, usando a menor visibilidade entre regiões sobrepostas.
+
+A posição das máscaras e da esfera usa o valor atual de `window.scrollY` em cada frame renderizado. A seleção de saga, o progresso compartilhado e a paleta continuam sob responsabilidade da ponte Motion. `ResizeObserver` no conteúdo, no espaço da esfera e no host, junto ao evento de resize, invalida o cache quando o layout muda. Essa medição não é refeita por frame.
+
+As máscaras atuam em partículas e filamentos. A esfera e seus arcos ficam exclusivamente no espaço decorativo da abertura e precisam de folga no layout. Nenhum personagem foi separado do raster ou convertido em modelo 3D; o primeiro plano luminoso é geometria decorativa independente sobre a ilustração.
 
 ## Ciclo de vida e fallback
 
 - **Movimento reduzido:** o provider compartilhado observa `prefers-reduced-motion`. No modo `static`, o effect não inicia importação ou canvas; mudanças para esse modo executam cleanup. A esfera SVG continua disponível.
 - **Aba oculta:** `visibilitychange` pausa o loop com `setAnimationLoop(null)`. Ao retornar, o relógio de frame é reiniciado e o layout é medido novamente, evitando acumular o tempo em que a aba ficou oculta.
-- **Troca de modo ou desmontagem:** o cleanup é idempotente; encerra o loop, remove eventos, desconecta o observer, libera geometrias e materiais dos arcos, da esfera e das partículas, limpa a cena e executa `renderer.dispose()`. As ações de liberação são registradas durante a inicialização e executadas em ordem inversa, com cada falha isolada para permitir as liberações restantes. O canvas é removido e, na destruição normal, o contexto é liberado pela extensão `WEBGL_lose_context` depois do descarte dos recursos.
+- **Troca de modo ou desmontagem:** o cleanup é idempotente; encerra o loop, remove eventos, desconecta o observer, libera geometrias e materiais dos arcos, esfera, partículas e filamentos, limpa os caches e a cena e executa `renderer.dispose()`. As ações de liberação são registradas durante a inicialização e executadas em ordem inversa, com cada falha isolada para permitir as liberações restantes. O canvas é removido e, na destruição normal, o contexto é liberado pela extensão `WEBGL_lose_context` depois do descarte dos recursos.
 - **Falha durante a inicialização:** a mesma pilha de liberação faz rollback dos recursos já adquiridos, inclusive se a cena ainda estiver incompleta. A esfera estática é restaurada antes de propagar a falha para o tratamento de fallback no effect.
 - **WebGL indisponível ou falha de carregamento/renderização:** o host fica em fallback, com HTML, imagens, links e SVG estático disponíveis. O callback `renderer.debug.onShaderError` encaminha falhas de compilação ou link de shader para a mesma saída com cleanup.
 - **Perda de contexto:** `webglcontextlost` descarta a cena e reexibe o SVG. Essa saída não solicita uma nova perda de contexto nem tenta restaurar automaticamente o mesmo canvas.
 
 Não há modelos, texturas ou chamadas de serviço externas em tempo de execução para esses efeitos.
 
-## Revisão técnica da geometria
+## Estado da revisão de energia
+
+Lint, typecheck e o build final desta revisão, após o congelamento do código, passaram. O build tem `energy-scene` em **573,77 kB / 145,99 kB gzip**, `index` em **232,77 kB / 72,96 kB gzip** e CSS em **14,24 kB / 3,82 kB gzip**. O aviso de chunk acima de 500 kB permanece.
+
+A nova QA do campo e dos filamentos passou em 360, 768 e 1440 px. As quinze combinações de cena/largura tiveram verificação no buffer WebGL: transparência nas regiões amostradas de texto/rostos e energia na arte livre. Pares de frames confirmaram a resposta da esfera ao ponteiro. Movimento reduzido, WebGL bloqueado, rollback, perda de contexto e desmontagem também passaram; a execução de cleanup liberou 30 buffers, 6 programas e 12 shaders. O smoke compilado passou nos cenários normal, reduzido e de falha dos módulos Three/Motion. Detalhes e limites estão em [validation.md](validation.md); a publicação usa [GitHub Pages](https://fernandesxz011.github.io/dragon-ball-super/).
+
+O helper de layout foi conferido em Node para seis combinações de scale 1/1.025 e translate −36/0/+36, retornando o mesmo retângulo de repouso, além dos casos `contain` centrado, `cover` à direita e dimensões declaradas antes do decode. Isso verifica os cálculos sem compilar shaders na GPU ou substituir a revisão em navegador.
+
+## Medições anteriores da geometria
 
 Uma inspeção Node, sem renderer ou navegador, percorreu os vértices transformados dos nove meshes orbitais em amostras de um segundo entre 0 e 120 segundos. Os limites encontrados foram aproximadamente **X ±1.41457** e **Y ±1.19923** em unidades locais. Com a escala externa atual de `0.4 × tamanho do slot`, isso corresponde a uma extensão lateral de aproximadamente **6.58% do slot** além de cada borda e a limites verticais dentro do slot.
 
 Essa medição ajuda a dimensionar a folga entre arcos e texto. É uma revisão técnica da geometria amostrada, sem medição de FPS, validação de contraste ou confirmação visual da integração no navegador.
 
-Após a troca do acabamento da esfera, um smoke test Node confirmou quatro estrelas, seis meshes, duas geometrias e três materiais. Seis combinações de tempo, ponteiro e movimento, incluindo entradas `NaN` e infinitas, mantiveram os atributos, as matrizes e o uniform de tempo finitos. O descarte duplicado liberou cada um dos cinco recursos uma única vez e removeu o grupo do pai. Esse teste não compila o shader na GPU nem substitui a revisão da captura no navegador.
+Após a troca anterior do acabamento da esfera, um smoke test Node confirmou quatro estrelas, seis meshes, duas geometrias e três materiais. Seis combinações de tempo, ponteiro e movimento, incluindo entradas `NaN` e infinitas, mantiveram os atributos, as matrizes e o uniform de tempo finitos. O descarte duplicado liberou cada um dos cinco recursos uma única vez e removeu o grupo do pai. Esse teste antecede a ampliação do campo e da inclinação do ponteiro, não compila shaders na GPU e não substitui a nova revisão em navegador.

@@ -16,7 +16,7 @@ export function Hero() {
           width={1672}
           height={941}
           alt="Arte de fã: Goku com cabelo prateado e Vegeta entre ruínas cósmicas e energia azul e violeta."
-          data-protect-region="0.46,0,0.54,0.82"
+          data-protect-region="0.48,0,0.49,0.46"
           fetchPriority="high"
         />
       </div>

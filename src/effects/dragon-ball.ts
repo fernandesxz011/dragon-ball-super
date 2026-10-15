@@ -14,6 +14,7 @@ import {
   SphereGeometry,
   type Material,
 } from 'three'
+import { orbInteraction } from './config'
 
 export interface DragonBall {
   group: Group
@@ -200,10 +201,10 @@ export function createDragonBall(): DragonBall {
     coreMaterial.uniforms.uTime.value = moving ? elapsed : 0
 
     // Only the child moves: the caller owns the slot placement/scale on group.
-    orb.position.y = moving ? Math.sin(elapsed * 0.72) * 0.045 : 0
+    orb.position.y = moving ? Math.sin(elapsed * 0.72) * orbInteraction.floatAmplitude : 0
     orb.rotation.set(
-      -0.03 + (moving ? Math.sin(elapsed * 0.27) * 0.025 + y * 0.045 : 0),
-      0.05 + (moving ? Math.sin(elapsed * 0.23) * 0.04 + x * 0.07 : 0),
+      MathUtils.clamp(-0.03 + (moving ? Math.sin(elapsed * 0.27) * 0.025 + y * orbInteraction.pointerTilt : 0), -orbInteraction.maxTilt, orbInteraction.maxTilt),
+      MathUtils.clamp(0.05 + (moving ? Math.sin(elapsed * 0.23) * 0.04 + x * orbInteraction.pointerTilt : 0), -orbInteraction.maxTilt, orbInteraction.maxTilt),
       moving ? Math.sin(elapsed * 0.19) * 0.018 : 0,
     )
   }

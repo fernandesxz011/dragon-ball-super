@@ -28,9 +28,10 @@ O ambiente usado foi **Node.js 24.15.0**. Node.js 24 reproduz esse ambiente; os 
 - A abertura apresenta “Além do limite.”, a descrição da jornada e o link “Explorar sagas” sobre a área escura da nova arte. A esfera ocupa um espaço próprio e recebe arcos de energia.
 - Moro, Granolah, Super Hero e Black Freeza aparecem nessa ordem, com artes grandes, personagens à direita e conteúdo HTML na área de leitura. No mobile, os frames e a posição das imagens recebem tratamento próprio.
 - **Motion 14.2.0** controla entradas dos textos e artes e o deslocamento das cenas conforme a rolagem. Os efeitos são carregados por módulos opcionais; links, headings e imagens ficam disponíveis antes deles.
-- **Three.js puro 0.186.1** reúne esfera, órbitas de energia e partículas em um canvas. O módulo aguarda o decode da imagem prioritária e usa a cena predominante medida pelo Motion para suavizar a paleta.
-- A configuração usa 200 partículas no desktop com ponteiro fino e 64 no modo compacto, DPR máximo de 1,5/1 e buffer limitado a 4096 px por dimensão. Os limites de renderização de 45/30 são configuração, sem medição ou garantia de FPS.
-- Máscaras protegem a leitura e as regiões dos personagens. Aba oculta pausa o renderer; falha de WebGL2, perda de contexto ou preferência reduzida mantém a esfera SVG estática e o conteúdo HTML. Recursos e listeners são liberados na desmontagem.
+- **Three.js puro 0.186.1** reúne esfera, órbitas, partículas de primeiro plano e três filamentos luminosos em um canvas. O módulo aguarda o decode da imagem prioritária e usa a cena predominante medida pelo Motion para suavizar a paleta. Os filamentos ocupam a região inferior da arte; a esfera responde suavemente ao mouse próximo no desktop.
+- A configuração usa 200 partículas no desktop com tamanhos-base de **6–18 px CSS**, e 64 no modo compacto com **4–10 px CSS**. Cerca de 20% recebem formato de rastro; profundidade, DPR e alongamento modificam o tamanho final. DPR máximo de 1,5/1 e buffer de até 4096 px por dimensão limitam a resolução. Os intervalos de 45/30 são configuração do throttle, sem medição ou garantia de FPS.
+- Máscaras protegem textos, controles e regiões específicas dos rostos, incluindo Goku e Vegeta pequenos ao fundo da arte de Black Freeza. O interior dessas regiões permanece sem partículas ou filamentos, com fade de 12 px pelo lado de fora. O cálculo considera `contain`/`cover`, posição da imagem e o repouso anterior ao transform de entrada/parallax.
+- Aba oculta pausa o renderer; falha de WebGL2, perda de contexto ou preferência reduzida mantém a esfera SVG estática e o conteúdo HTML. Recursos e listeners são liberados na desmontagem. O site consulta a preferência de movimento de cada visitante e mantém a versão estática quando ela está reduzida.
 
 A rolagem permanece nativa, com âncoras reais, link de pular ao conteúdo e foco visível. Não há captura de wheel/touch para obrigar uma sequência.
 
@@ -50,33 +51,32 @@ O script usa `System.Drawing`, confere caminhos e hashes ao arquivar masters e p
 
 **Bangers**, de Vernon Adams, permanece local em WOFF2 Latin/Latin-ext, peso real 400 e `font-display: swap`. É lettering de quadrinhos, sem se apresentar como a fonte oficial do logo de Dragon Ball. Parágrafos e controles menores usam a fonte de sistema. A licença **SIL Open Font License 1.1** e o metadata acompanham os arquivos em `public/fonts/`; detalhes em [docs/fonts.md](docs/fonts.md).
 
-## Verificação disponível
+## Verificação da revisão de energia
 
 | Verificação da composição atual | Estado |
 | --- | --- |
 | `npm.cmd run lint` | Passou |
 | `npm.cmd run typecheck` | Passou |
 | `npm.cmd run build` | Passou, com o aviso de tamanho de chunk abaixo |
-| QA funcional em Chrome 155 — 360 × 800, 768 × 1024 e 1440 × 1000 | Passou; sem overflow horizontal ou erros inesperados de aplicação/rede |
-| Navegação e teclado | Passou; 30 acionamentos de âncoras, skip link e foco visível |
-| Axe nas três larguras | Zero violações detectadas; fundos complexos receberam revisão complementar de contraste |
-| Movimento reduzido, fallbacks e limpeza | Passou; preferência inicial/dinâmica, falhas dos módulos, WebGL indisponível, perda de contexto e desmontagem |
-| Contraste sobre as artes | Passou nos textos e controles amostrados em 360 e 1440 px, incluindo os estados inicial e final |
-| Smoke do build de produção | Passou com o prefixo `/dragon-ball-super/`, Motion, Three.js e fallbacks |
+| QA da ampliação de partículas e filamentos | Passou em 360/768/1440 px; máscaras WebGL, ponteiro, reduced, fallbacks e cleanup |
+| QA funcional da versão publicada anterior | Passou em 360 × 800, 768 × 1024 e 1440 × 1000; 30 acionamentos de âncoras, teclado e foco |
+| Axe, movimento reduzido, fallbacks e limpeza da versão anterior | Passaram; zero violações axe detectadas nas três larguras |
+| Contraste sobre as artes na versão anterior | Passou nos textos e controles amostrados em 360 e 1440 px; nova energia ainda em revisão |
+| Smoke de produção da versão anterior | Passou com o prefixo `/dragon-ball-super/`, Motion, Three.js e fallbacks |
 
 O Vite mantém o aviso de **chunk acima de 500 kB** para o módulo Three. O carregamento desse módulo é lazy e ocorre após o decode da arte prioritária; isso não elimina seu peso de transferência.
 
-| Saída do build atual | kB | gzip, kB |
+| Último build da revisão de energia | kB | gzip, kB |
 | --- | ---: | ---: |
 | CSS | 14,24 | 3,82 |
-| Entrada `index` | 232,60 | 72,90 |
+| Entrada `index` | 232,77 | 72,96 |
 | `scene-motion` | 18,73 | 7,32 |
 | `scene-progress` | 0,56 | 0,33 |
-| `energy-scene` | 567,33 | 144,09 |
+| `energy-scene` | 573,77 | 145,99 |
 
-A QA da composição cinematográfica foi executada em Chrome 155 com Playwright; o plugin Browser não estava disponível. A rodada funcional passou nos três tamanhos acima. O contraste foi conferido separadamente sobre pixels reais dos fundos, incluindo a opacity inicial de 0,72 dos textos e 0,85 do CTA. Na revisão final desktop, os menores contrastes dos títulos e parágrafos de Granolah foram **11,81:1 no estado final e 6,46:1 no inicial**; em Super Hero, **8,82:1 e 6,01:1**. O método conservador e seus limites estão em [docs/art-direction.md](docs/art-direction.md).
+A versão cinematográfica publicada no commit `b2da19d` passou por QA em Chrome 155 com Playwright; o plugin Browser não estava disponível. A rodada funcional e o smoke de produção dessa versão passaram. O contraste sobre pixels reais dos fundos incluiu os estados inicial/final das entradas; método e resultados anteriores estão em [docs/art-direction.md](docs/art-direction.md).
 
-Essas verificações cobrem os cenários locais registrados e não equivalem a certificação completa de acessibilidade ou medição de desempenho em dispositivos reais. O smoke de produção confirmou os arquivos servidos idênticos ao build, fontes e cinco artes carregadas, efeitos automáticos, preferência reduzida e recuperação da falha dos módulos opcionais. Veja [o relatório de validação](docs/validation.md). Resultados das etapas anteriores permanecem históricos.
+A ampliação atual passou por uma nova QA: quinze combinações de cena/largura no buffer WebGL, resposta ao ponteiro, movimento reduzido, fallbacks e liberação de recursos. O smoke do build compilado também passou nos cenários normal, reduzido e de falha dos dois módulos opcionais. Lint, TypeScript e build passaram. Veja [o relatório de validação](docs/validation.md). Os testes registrados não equivalem a certificação completa de acessibilidade ou medição de desempenho em dispositivos reais.
 
 Para repetir as verificações e abrir o build:
 
@@ -96,7 +96,7 @@ O build fica em `dist/` e o preview em **http://127.0.0.1:4173/**. Abrir `dist/i
 | `src/components/` | Estrutura, navegação, abertura e cenas das sagas |
 | `src/data/sagas.ts` | Conteúdo, âncoras e dimensões das novas artes |
 | `src/motion/` | Preferências, entradas, rolagem e ponte de progresso |
-| `src/effects/` | Cena Three, esfera, órbitas, partículas e fallback |
+| `src/effects/` | Cena Three, esfera, órbitas, partículas, filamentos e fallback |
 | `src/styles.css` | Tipografia, composição, frames responsivos e foco |
 | `public/assets/cinematic/` | JPEGs responsivos usados pela interface atual |
 | `art-source/cinematic/` | Masters PNG preservados |
@@ -118,4 +118,4 @@ A experiência inicia automaticamente. Não inclui áudio, modelos 3D de persona
 
 Código-fonte: [fernandesxz011/dragon-ball-super](https://github.com/fernandesxz011/dragon-ball-super).
 
-GitHub Pages: [abrir a apresentação](https://fernandesxz011.github.io/dragon-ball-super/). O workflow publica automaticamente após os checks de cada envio para `main`; [acompanhe as execuções](https://github.com/fernandesxz011/dragon-ball-super/actions). Configuração e reprodução do prefixo estão em [docs/deployment.md](docs/deployment.md).
+GitHub Pages: [abrir a apresentação](https://fernandesxz011.github.io/dragon-ball-super/). O workflow publica após os checks de cada envio para `main`; [acompanhe as execuções](https://github.com/fernandesxz011/dragon-ball-super/actions). Configuração e reprodução do prefixo estão em [docs/deployment.md](docs/deployment.md).

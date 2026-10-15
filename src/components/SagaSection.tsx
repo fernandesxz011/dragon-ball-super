@@ -34,7 +34,7 @@ export function SagaSection({ saga }: SagaSectionProps) {
             alt={saga.artwork.alt}
             loading="lazy"
             decoding="async"
-            data-protect-region="0.38,0,0.62,0.84"
+            data-protect-region={saga.artwork.protectedRegions}
           />
         </picture>
       </div>

@@ -43,7 +43,19 @@ As medições complementares sobre pixels reais dos glifos, sem creditar contorn
 
 A posição da esfera no celular acompanha os blocos sucessivos e difere do conceito desktop. Ela e as partículas são renderizadas por código; não são uma cópia raster do efeito ilustrado no conceito. As imagens continuam achatadas, sem personagens ou cenários animados separadamente.
 
-## Limites
+## Ampliação da energia — 15 de outubro
+
+A revisão ampliou os pontos e rastros de primeiro plano e acrescentou três filamentos luminosos sobre a região inferior das artes. A esfera responde por proximidade do mouse, com limite de inclinação de aproximadamente 17,2°. Conteúdo e arquivos de arte permanecem iguais.
+
+Nova QA em Chrome/Playwright passou nas larguras 360, 768 e 1440 px. As quinze combinações de cena/largura foram inspecionadas no próprio buffer WebGL: as regiões amostradas de texto e rostos protegidos ficaram transparentes, enquanto as áreas livres da arte receberam energia. A comparação de frames confirmou partículas em movimento e a resposta da esfera ao ponteiro nos dois sentidos. Não houve erro de console, warning ou overflow nos cenários normais.
+
+Movimento reduzido inicial/dinâmico, WebGL bloqueado, erro de inicialização, perda de contexto e desmontagem React passaram. A instrumentação da desmontagem observou liberação de 30 buffers, 6 programas e 12 shaders, remoção do canvas e liberação do contexto. Esses números descrevem a execução testada, sem constituir garantia contra todo vazamento ou medição de FPS.
+
+Scripts, capturas e relatórios ficam fora da aplicação em `%TEMP%/dragon-ball-cinematic-qa/energy-v2/`. As preferências de acessibilidade dos visitantes continuam respeitadas; nenhuma etapa de ativação foi adicionada à interface.
+
+O smoke do novo build compilado também passou em 1440 px nos quatro cenários: normal, movimento reduzido inicial, falha do chunk Three e falha do chunk Motion. HTML, JS, CSS e fontes servidos no prefixo são idênticos ao build local. Conteúdo, cinco artes e CTA permaneceram acessíveis, sem erros normais de console/rede; os dois abortos de módulo produziram somente as falhas de rede intencionais.
+
+## Limites da validação
 
 Não foram testados Firefox, Safari ou aparelhos físicos. Acessibilidade básica e axe não representam certificação. Os masters têm 1672 px de largura; telas maiores podem revelar o limite de nitidez. Não existem vídeos, sequências de frames ou camadas independentes de personagens para transformações reais.
 
