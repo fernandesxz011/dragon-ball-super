@@ -1,0 +1,6 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+
+# Reference documents and third-party fonts retain their exact original bytes.
+Dragon_Ball_Super_Codex/** -text
+public/fonts/** -text
