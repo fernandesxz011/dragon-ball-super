@@ -19,6 +19,7 @@ export function enhanceScene(scene: HTMLElement, kind: 'intro' | 'saga', paralla
   const scrollControls: Playback[] = []
   const stopScroll: (() => void)[] = []
   const progress = registerSceneProgress(scene.dataset.scene ?? kind)
+  if (scene.dataset.artRevealed === 'true') progress.markArtEntered(0)
   let stopInView: (() => void) | undefined
   let stopArtInView: (() => void) | undefined
   let disposed = false
@@ -36,6 +37,7 @@ export function enhanceScene(scene: HTMLElement, kind: 'intro' | 'saga', paralla
   function finishReveals() {
     scene.dataset.revealed = 'true'
     scene.dataset.artRevealed = 'true'
+    progress.markArtEntered(0)
     try {
       if (stopInView) runCleanup(stopInView)
       if (stopArtInView) runCleanup(stopArtInView)
@@ -51,6 +53,7 @@ export function enhanceScene(scene: HTMLElement, kind: 'intro' | 'saga', paralla
   function revealArt() {
     if (disposed || !artImage || scene.dataset.artRevealed === 'true') return
     scene.dataset.artRevealed = 'true'
+    progress.markArtEntered()
     try {
       revealControls.push(animate(artImage, {
         opacity: [0.8, 1],

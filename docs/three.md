@@ -1,6 +1,6 @@
 # Three.js — Etapa 04
 
-A cena acrescenta uma esfera de quatro estrelas com arcos orbitais, partículas de primeiro plano distribuídas pelo quadro e três filamentos luminosos sobre a região inferior das artes, usando **Three.js puro 0.186.1**, integrado por effects do React. **Motion 14.2.0** continua responsável pelas entradas e pelo movimento das artes em HTML. Os personagens permanecem nas imagens, com o conteúdo e a navegação disponíveis antes do carregamento do efeito.
+A cena acrescenta uma esfera de quatro estrelas com arcos orbitais, partículas de primeiro plano, três filamentos luminosos e auras que acompanham as silhuetas dos personagens, usando **Three.js puro 0.186.1**, integrado por effects do React. **Motion 14.2.0** continua responsável pelas entradas e pelo parallax das artes em HTML. O relevo 2,5D compartilha uma matriz entre a composição HTML e a aura no canvas. Os personagens permanecem nas imagens, com o conteúdo e a navegação disponíveis antes do carregamento do efeito.
 
 Os efeitos começam automaticamente na abertura e acompanham a rolagem, sem checkbox, opt-in ou tela de ativação. A preferência de movimento reduzido de cada visitante mantém a apresentação estática. O aplicativo consulta essa preferência; o diagnóstico das configurações de animação no computador de desenvolvimento não é uma funcionalidade do site.
 
@@ -15,7 +15,7 @@ As versões estão fixadas no `package.json` e no lockfile. A integração usa o
 
 `src/effects/EnergyEffects.tsx` espera a conclusão de `decode()` da imagem prioritária `.hero__image` antes de importar `energy-scene.ts`. Uma falha no decode libera a tentativa do efeito, sem impedir o restante da página. O módulo opcional tem uma promise compartilhada e uma guarda de desmontagem, para impedir a criação tardia de uma cena depois da troca de preferência ou desmontagem.
 
-`src/effects/energy-scene.ts` cria **um canvas ativo**, transparente e fixo sobre a viewport, compartilhado pela esfera, órbitas, partículas e filamentos. O contexto WebGL2 solicita `powerPreference: 'low-power'`; antialiasing é habilitado no modo desktop. A saída usa `SRGBColorSpace`. O host e o canvas são decorativos, com `aria-hidden` e sem eventos de ponteiro que interceptem os controles.
+`src/effects/energy-scene.ts` cria **um canvas WebGL ativo**, transparente e fixo sobre a viewport, compartilhado pela esfera, órbitas, partículas, filamentos e aura. Pequenos canvases 2D temporários produzem as máscaras da aura e são liberados depois da leitura dos canais. O contexto WebGL2 solicita `powerPreference: 'low-power'`; antialiasing é habilitado no modo desktop. A saída usa `SRGBColorSpace`. O host e o canvas são decorativos, com `aria-hidden` e sem eventos de ponteiro que interceptem os controles.
 
 A cena usa uma **OrthographicCamera**, com limites ajustados à área CSS do host (`host.clientWidth` e `host.clientHeight`) e posição Z de 1000. Medir o host evita incluir a largura da scrollbar no canvas e nas coordenadas da cena. A projeção preserva o formato circular da esfera mesmo no espaço lateral reservado no layout, mantendo as quatro estrelas frontais. A independência entre escala e distância é descrita no [código oficial de OrthographicCamera](https://raw.githubusercontent.com/mrdoob/three.js/r186/src/cameras/OrthographicCamera.js).
 
@@ -69,6 +69,20 @@ O shader descarta pixels fora do envelope luminoso antes do loop de até 24 más
 
 ## Scroll compartilhado e cores
 
+### Aura e relevo 2,5D
+
+`character-aura-paths.ts` define silhuetas em coordenadas nativas, retângulos faciais menores e exclusões locais de aura; [a origem e os limites](aura-paths.md) estão registrados separadamente. `character-aura.ts` rasteriza esses vetores em canvases 2D temporários somente na primeira visita a cada arte. O mapa RGBA guarda corpo, halo largo, contorno estreito e proteção facial/oclusões. Os bytes são enviados como `DataTexture` com `NoColorSpace`, filtro linear e sem mipmaps. Usar canais brutos impede a premultiplicação do alpha facial de apagar os demais controles. A API está na [documentação oficial de DataTexture](https://threejs.org/docs/pages/DataTexture.html).
+
+O mapa tem lado maior limitado a **1024 px no desktop / 640 px no compacto**, preservando a proporção do master. O blur largo é **18/14 px de textura**, e o estreito **2,2/2 px**. São cálculos únicos de preparação, sem blur de tela ou pós-processamento por frame. Até cinco mapas ficam em cache durante a visita; todos são descartados com a cena. Uma falha na preparação de um mapa oculta apenas sua aura, mantendo o restante dos efeitos.
+
+Um quad compartilhado mostra a aura da arte predominante. O fragment shader usa duas amostras do controle e fluxo sinusoidal de baixa amplitude, preservando o interior do corpo e as regiões faciais. Cabelo, chifres e ombros recebem o brilho pelo lado externo. Três supressões locais evitam placas luminosas na ponta do chifre de Moro, na borda difusa da capa de Granolah e no vão entre cintura e antebraço de Gohan. São regiões sem aura, sem classificá-las como corpo. O controle de oclusão recebe blur de 5 px de textura e fade no shader; o branco do contorno é limitado para preservar a cor. O fechamento inferior dissolve entre UV Y **0,59–0,76** na abertura e **0,78–0,96** em Black Freeza; nos demais, **0,86–1**. Bordas nativas também recebem fade. Isso evita iluminar como contorno físico as linhas de fechamento usadas na névoa ou no limite do arquivo.
+
+`art-depth.ts` calcula uma matriz `perspective × rotateX × rotateY × scale`, aplicada ao contêiner HTML `[data-depth-surface]` e copiada para o vertex shader da aura. A mesma origem e a coordenada homogênea W mantêm a projeção e os UVs alinhados. A implementação segue [Matrix4](https://threejs.org/docs/pages/Matrix4.html) e [CSS matrix3d](https://developer.mozilla.org/en-US/docs/Web/CSS/transform-function/matrix3d). Inclinação máxima de **±1,2°**, escala de **1,012** e perspectiva de `max(1100 px, largura × 1,2)` acrescentam relevo discreto. A composição inteira se move, incluindo o cenário; não há camada independente nem malha 3D de personagem.
+
+O loop existente calcula a resposta suave ao ponteiro no desktop e uma inclinação automática lenta. Até 900 px a matriz permanece identidade, reforçada por CSS. As medições iniciais e de resize neutralizam temporariamente essa transformação antes de guardar o layout; não são feitas leituras geométricas por frame. O parallax Motion é incluído na projeção da aura. `artEnteredAt`, na ponte compartilhada, aguarda **1000 ms** após a entrada da imagem e acrescenta **350 ms** de fade da aura; a abertura já está pronta. Textos permanecem estáveis.
+
+A aura compartilha tempo, viewport e paleta com o campo existente, mas usa máscaras HTML separadas: as antigas regiões amplas de cabelo/rosto continuam protegendo partículas e filamentos e não suprimem a aura do cabelo. O controle de corpo/faces protege a ilustração. Cleanup restaura os estilos de profundidade e libera quad, material e texturas, além dos recursos anteriores. Movimento reduzido e fallback dispensam o canvas e preservam a apresentação estática.
+
 `src/motion/scene-motion.ts` registra as cenas usando o `scroll()` do Motion, com os offsets `start end` e `end start`. `src/motion/scene-progress.ts` guarda progresso e medidas em uma ponte mutável, lida pela cena Three. Isso compartilha as medições existentes, sem introduzir um segundo listener de scroll ou atualizar estado React por frame. A API está descrita na [documentação oficial de scroll do Motion](https://motion.dev/docs/scroll).
 
 A cena predominante é escolhida pela maior pontuação de altura visível, com pequena penalização pela distância ao centro da viewport. O efeito não depende somente de qual seção foi cruzada por último. Cor, intensidade e dispersão aproximam-se do tema escolhido por suavização exponencial, evitando uma troca abrupta na passagem entre sagas. Sem cena registrada visível, a intensidade das partículas aproxima-se de zero.
@@ -96,7 +110,7 @@ Até **24 retângulos visíveis** protegem cabeçalho, índice, seção sobre, r
 | Black Freeza | `0.55,0.02,0.35,0.5` | Rosto e parte superior de Freeza |
 | Black Freeza, fundo | `0.88,0.72,0.1,0.22` | Goku e Vegeta pequenos ao fundo |
 
-`imageLayoutBounds()` neutraliza o translate do `picture` e o scale centrado do `img` usando `DOMMatrixReadOnly`. O cache representa o repouso, evitando que um snapshot em +36 px fique 72 px distante do extremo −36 px do parallax. `imagePlacement()` considera a proporção nativa ou declarada, `object-fit: contain`/`cover` e `object-position`, incluindo centro no desktop e alinhamento à direita no compacto. As regiões são limitadas à caixa visível da imagem.
+`imageLayoutBounds()` neutraliza o translate do `picture` e o scale centrado do `img` usando `DOMMatrixReadOnly`; o contêiner externo de profundidade é neutralizado durante a medição. O cache representa o repouso, evitando que um snapshot em +36 px fique 72 px distante do extremo −36 px do parallax. `imagePlacement()` prioriza a proporção declarada do master, estável antes/depois do decode, evitando o arredondamento inteiro de `naturalWidth`/`naturalHeight` nos srcsets. A proporção natural é fallback. O cálculo considera `object-fit: contain`/`cover` e `object-position`, incluindo centro no desktop e alinhamento à direita no compacto. As regiões são limitadas à caixa visível da imagem. Derivados JPEG podem arredondar a altura em um pixel; essa diferença pequena permanece no mapeamento.
 
 Os retângulos comuns recebem margem de **12 px**; elementos com `data-reveal`, H1 e grupos de título recebem **44 px**. As regiões de personagens recebem margens horizontal/vertical de **12/44 px**, mais **1.3%** da largura/altura da caixa para cobrir o scale de entrada 1.025. O shader compartilhado mantém **alpha zero no interior** dos retângulos e aplica um fade de **12 px somente pelo lado externo**, usando a menor visibilidade entre regiões sobrepostas.
 
@@ -113,9 +127,13 @@ As máscaras atuam em partículas e filamentos. A esfera e seus arcos ficam excl
 - **WebGL indisponível ou falha de carregamento/renderização:** o host fica em fallback, com HTML, imagens, links e SVG estático disponíveis. O callback `renderer.debug.onShaderError` encaminha falhas de compilação ou link de shader para a mesma saída com cleanup.
 - **Perda de contexto:** `webglcontextlost` descarta a cena e reexibe o SVG. Essa saída não solicita uma nova perda de contexto nem tenta restaurar automaticamente o mesmo canvas.
 
-Não há modelos, texturas ou chamadas de serviço externas em tempo de execução para esses efeitos.
+Não há modelos, texturas baixadas ou chamadas de serviço externas em tempo de execução para esses efeitos. Os mapas de controle da aura são gerados localmente por código.
 
 ## Estado da revisão de energia
+
+A revisão de **aura e relevo de 20 de outubro de 2026** passou por lint, TypeScript, build e QA nas quinze combinações de cena/largura. O build final tem `energy-scene` em **590,89 kB / 152,48 kB gzip**, `index` em **232,94 kB / 72,98 kB gzip** e CSS em **14,61 kB / 3,88 kB gzip**. O aviso acima de 500 kB permanece. Máscaras, alinhamento, movimento, resize, teclado, preferência reduzida e cleanup foram conferidos; o smoke de produção passou nos modos normal, reduzido e sem WebGL. A revisão visual eliminou três placas de brilho usando supressões locais e suavização do contorno. Detalhes em [validation.md](validation.md).
+
+Os números e resultados abaixo registram a revisão anterior de partículas e filamentos, de 15 de outubro.
 
 Lint, typecheck e o build final desta revisão, após o congelamento do código, passaram. O build tem `energy-scene` em **573,77 kB / 145,99 kB gzip**, `index` em **232,77 kB / 72,96 kB gzip** e CSS em **14,24 kB / 3,82 kB gzip**. O aviso de chunk acima de 500 kB permanece.
 

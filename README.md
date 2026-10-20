@@ -28,7 +28,8 @@ O ambiente usado foi **Node.js 24.15.0**. Node.js 24 reproduz esse ambiente; os 
 - A abertura apresenta “Além do limite.”, a descrição da jornada e o link “Explorar sagas” sobre a área escura da nova arte. A esfera ocupa um espaço próprio e recebe arcos de energia.
 - Moro, Granolah, Super Hero e Black Freeza aparecem nessa ordem, com artes grandes, personagens à direita e conteúdo HTML na área de leitura. No mobile, os frames e a posição das imagens recebem tratamento próprio.
 - **Motion 14.2.0** controla entradas dos textos e artes e o deslocamento das cenas conforme a rolagem. Os efeitos são carregados por módulos opcionais; links, headings e imagens ficam disponíveis antes deles.
-- **Three.js puro 0.186.1** reúne esfera, órbitas, partículas de primeiro plano e três filamentos luminosos em um canvas. O módulo aguarda o decode da imagem prioritária e usa a cena predominante medida pelo Motion para suavizar a paleta. Os filamentos ocupam a região inferior da arte; a esfera responde suavemente ao mouse próximo no desktop.
+- **Three.js puro 0.186.1** reúne esfera, órbitas, partículas de primeiro plano, três filamentos luminosos e auras dos personagens em um canvas. O módulo aguarda o decode da imagem prioritária e usa a cena predominante medida pelo Motion para suavizar a paleta. Os filamentos ocupam a região inferior da arte; a esfera responde suavemente ao mouse próximo no desktop.
+- A aura acompanha guias próprios de cabelo, chifres, ombros e corpo das cinco artes, com brilho exterior e fluxo de energia. No desktop, a composição recebe perspectiva 2,5D discreta e resposta ao ponteiro; imagem e aura compartilham a mesma transformação. No celular, a imagem permanece estável. Os rasters continuam inteiros, sem personagens ou cenários separados. O método e as coordenadas estão em [docs/aura-paths.md](docs/aura-paths.md).
 - A configuração usa 200 partículas no desktop com tamanhos-base de **6–18 px CSS**, e 64 no modo compacto com **4–10 px CSS**. Cerca de 20% recebem formato de rastro; profundidade, DPR e alongamento modificam o tamanho final. DPR máximo de 1,5/1 e buffer de até 4096 px por dimensão limitam a resolução. Os intervalos de 45/30 são configuração do throttle, sem medição ou garantia de FPS.
 - Máscaras protegem textos, controles e regiões específicas dos rostos, incluindo Goku e Vegeta pequenos ao fundo da arte de Black Freeza. O interior dessas regiões permanece sem partículas ou filamentos, com fade de 12 px pelo lado de fora. O cálculo considera `contain`/`cover`, posição da imagem e o repouso anterior ao transform de entrada/parallax.
 - Aba oculta pausa o renderer; falha de WebGL2, perda de contexto ou preferência reduzida mantém a esfera SVG estática e o conteúdo HTML. Recursos e listeners são liberados na desmontagem. O site consulta a preferência de movimento de cada visitante e mantém a versão estática quando ela está reduzida.
@@ -51,7 +52,21 @@ O script usa `System.Drawing`, confere caminhos e hashes ao arquivar masters e p
 
 **Bangers**, de Vernon Adams, permanece local em WOFF2 Latin/Latin-ext, peso real 400 e `font-display: swap`. É lettering de quadrinhos, sem se apresentar como a fonte oficial do logo de Dragon Ball. Parágrafos e controles menores usam a fonte de sistema. A licença **SIL Open Font License 1.1** e o metadata acompanham os arquivos em `public/fonts/`; detalhes em [docs/fonts.md](docs/fonts.md).
 
-## Verificação da revisão de energia
+## Verificações
+
+O build de 20 de outubro de 2026 inclui as auras e a perspectiva 2,5D. `npm.cmd run lint` e o build com TypeScript passaram, usando o prefixo de produção `/dragon-ball-super/`.
+
+| Build com aura | kB | gzip, kB |
+| --- | ---: | ---: |
+| CSS | 14,61 | 3,88 |
+| Entrada `index` | 232,94 | 72,98 |
+| `scene-motion` | 18,83 | 7,35 |
+| `scene-progress` | 0,70 | 0,39 |
+| `energy-scene` | 590,89 | 152,48 |
+
+A aura passou por revisão visual e testes em quinze combinações de cena/largura, com 360, 768 e 1440 px. Movimento automático, ponteiro, rolagem nos dois sentidos, resize, teclado, movimento reduzido, máscaras e descarte de recursos foram conferidos. O smoke do build de produção passou com movimento normal, reduzido e WebGL indisponível. Detalhes e limites estão em [docs/validation.md](docs/validation.md).
+
+A tabela abaixo registra a rodada anterior de energia.
 
 | Verificação da composição atual | Estado |
 | --- | --- |
@@ -96,7 +111,7 @@ O build fica em `dist/` e o preview em **http://127.0.0.1:4173/**. Abrir `dist/i
 | `src/components/` | Estrutura, navegação, abertura e cenas das sagas |
 | `src/data/sagas.ts` | Conteúdo, âncoras e dimensões das novas artes |
 | `src/motion/` | Preferências, entradas, rolagem e ponte de progresso |
-| `src/effects/` | Cena Three, esfera, órbitas, partículas, filamentos e fallback |
+| `src/effects/` | Cena Three, esfera, órbitas, partículas, filamentos, aura, relevo 2,5D e fallback |
 | `src/styles.css` | Tipografia, composição, frames responsivos e foco |
 | `public/assets/cinematic/` | JPEGs responsivos usados pela interface atual |
 | `art-source/cinematic/` | Masters PNG preservados |
@@ -107,6 +122,7 @@ O build fica em `dist/` e o preview em **http://127.0.0.1:4173/**. Abrir `dist/i
 | `docs/art-direction.md` | Arte atual, proveniência, prompts e derivados |
 | `docs/assets.md` | Histórico dos recortes originais preservados |
 | `docs/fonts.md` | Origem, licença e cobertura da fonte |
+| `docs/aura-paths.md` | Guias de silhueta, coordenadas e limites da aura |
 | `docs/motion.md`, `docs/three.md` | Documentação técnica das integrações |
 | `Dragon_Ball_Super_Codex/` | Pacote original preservado |
 

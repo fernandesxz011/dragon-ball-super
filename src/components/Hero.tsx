@@ -8,17 +8,19 @@ export function Hero() {
   return (
     <section ref={sceneRef} className="hero" aria-labelledby="page-title" data-scene="intro">
       <div className="hero__media" data-scene-part="art">
-        <img
-          className="hero__image"
-          src={assetUrl('assets/cinematic/hero-1672.jpg')}
-          srcSet={`${assetUrl('assets/cinematic/hero-640.jpg')} 640w, ${assetUrl('assets/cinematic/hero-1120.jpg')} 1120w, ${assetUrl('assets/cinematic/hero-1672.jpg')} 1672w`}
-          sizes="(max-width: 600px) 178vw, 100vw"
-          width={1672}
-          height={941}
-          alt="Arte de fã: Goku com cabelo prateado e Vegeta entre ruínas cósmicas e energia azul e violeta."
-          data-protect-region="0.48,0,0.49,0.46"
-          fetchPriority="high"
-        />
+        <div className="art-depth-surface" data-depth-surface>
+          <img
+            className="hero__image"
+            src={assetUrl('assets/cinematic/hero-1672.jpg')}
+            srcSet={`${assetUrl('assets/cinematic/hero-640.jpg')} 640w, ${assetUrl('assets/cinematic/hero-1120.jpg')} 1120w, ${assetUrl('assets/cinematic/hero-1672.jpg')} 1672w`}
+            sizes="(max-width: 600px) 178vw, 100vw"
+            width={1672}
+            height={941}
+            alt="Arte de fã: Goku com cabelo prateado e Vegeta entre ruínas cósmicas e energia azul e violeta."
+            data-protect-region="0.48,0,0.49,0.46"
+            fetchPriority="high"
+          />
+        </div>
       </div>
       <div className="hero__caption page-container" data-scene-part="caption">
         <h1 id="page-title" data-reveal>

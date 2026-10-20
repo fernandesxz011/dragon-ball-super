@@ -2,7 +2,7 @@
 
 ## Integração
 
-Motion **14.2.0**, fixado no lockfile, anima os elementos HTML por refs e effects do React. A animação inicia automaticamente quando a preferência do sistema permite movimento; não existe botão de ativação. Three.js cuida da esfera, órbitas, partículas de primeiro plano e três filamentos, recebendo o progresso compartilhado de `scene-progress.ts`; veja [three.md](three.md).
+Motion **14.2.0**, fixado no lockfile, anima os elementos HTML por refs e effects do React. A animação inicia automaticamente quando a preferência do sistema permite movimento; não existe botão de ativação. Three.js cuida da esfera, órbitas, partículas de primeiro plano, três filamentos e auras, recebendo o progresso compartilhado de `scene-progress.ts`; veja [three.md](three.md).
 
 A integração usa `inView()` para entradas e `scroll()` para progresso. `animate()` de `motion/mini` altera somente `opacity` e o `transform` completo. `src/motion/scene-motion.ts` é importado como módulo opcional depois da primeira renderização, sem bloquear o HTML ou os links.
 
@@ -17,7 +17,7 @@ No build final da revisão de energia após o congelamento do código, o chunk `
 
 | Elemento | Entrada | Comportamento durante a leitura |
 | --- | --- | --- |
-| Arte da abertura | Imediata, sem animação Motion | Estática |
+| Arte da abertura | Imediata, sem animação Motion | Perspectiva 2,5D no desktop pelo loop compartilhado da cena; estática no compacto |
 | Título, descrição e identificação de fã da abertura | Opacity 0,72 → 1; translateY 32 → 0 px | Texto permanece estável após a entrada |
 | Link Explorar sagas | Opacity 0,85 → 1; translateY 12 → 0 px | Controle permanece disponível; foco conclui a entrada |
 | Número, título e descrição das sagas | Opacity 0,72 → 1; translateY 32 → 0 px | Entrada única, sem novo fade ao voltar |
@@ -31,6 +31,8 @@ As entradas de texto duram **0,72 s**, com atraso de **0,1 s por elemento**, usa
 O texto dispara quando 35% da legenda da abertura ou do cabeçalho da saga entra na tela. A arte tem um `inView()` separado sobre o próprio `img`, com `amount: 0.08`: ela faz sua entrada ao aparecer, sem esperar o cabeçalho que vem depois da imagem no celular. A opacity inicial de 0,8 mantém a arte legível durante essa pequena entrada; a imagem não recebe um novo fade quando o título aparece.
 
 Os marcadores `data-revealed` e `data-art-revealed` registram separadamente o primeiro disparo do texto e da imagem. Os observers deixam de acompanhar a respectiva entrada após o disparo; os marcadores evitam repetições ao voltar à seção ou mudar de breakpoint. A escala de entrada atua no `img`; o parallax atua no `picture` que o contém.
+
+A revisão de aura acrescenta `artEnteredAt` à ponte mutável existente. A cena Three aguarda a conclusão da entrada da arte antes de iniciar o relevo e a aura; a abertura já nasce pronta. Foco ou restauração de uma seção já revelada marca a arte como pronta imediatamente. O contêiner externo `[data-depth-surface]` recebe a matriz de perspectiva compartilhada com o shader da aura, enquanto `picture` e `img` conservam seus transforms Motion. Essa hierarquia evita que os dois módulos sobrescrevam a mesma propriedade no mesmo elemento. Não existe outro controlador de rolagem.
 
 O progresso usa `offset: ['start end', 'end start']`, considerando o percurso completo da cena pela janela. Até 900 px, o modo `reveal` mantém as entradas de texto e imagem, com deslocamento de rolagem da arte igual a zero. Acima desse breakpoint, o modo `full` acrescenta parallax e variação da borda.
 
@@ -50,13 +52,15 @@ Links permanecem âncoras nativas. O CSS usa `scroll-behavior: smooth` normalmen
 
 As artes cinematográficas atuais substituem as bandas estreitas da Etapa 02. No desktop, a composição da saga ocupa o fundo da seção, com `object-fit: contain` e texto HTML sobre o espaço negativo. No tablet/celular, a arte antecede o conteúdo e usa `object-fit: cover; object-position: right center`, dentro da proporção definida no CSS. O contêiner da arte usa `overflow: clip`; isso também limita a escala transitória e o parallax ao quadro da cena.
 
-Personagens, paisagem e a energia desenhada no arquivo continuam em uma ilustração achatada. Motion desloca essa imagem como um todo; não existem animações independentes de rosto ou personagem. Fontes, títulos, descrições e controles permanecem elementos HTML. O novo primeiro plano Three acrescenta partículas de tamanho-base 6–18 px CSS no desktop e 4–10 px no compacto, com cerca de 20% de rastros, além de três filamentos num quad limitado à metade inferior da arte.
+Personagens, paisagem e a energia desenhada no arquivo continuam em uma ilustração achatada. Motion desloca essa imagem como um todo; não existem animações independentes de rosto ou personagem. O relevo 2,5D também transforma a composição inteira, sem deslocar pixels do rosto ou reconstruir cenários ocultos. Fontes, títulos, descrições e controles permanecem elementos HTML. O primeiro plano Three acrescenta partículas de tamanho-base 6–18 px CSS no desktop e 4–10 px no compacto, com cerca de 20% de rastros, além de três filamentos num quad limitado à metade inferior da arte. A aura exterior usa os [guias de silhueta](aura-paths.md) específicos das cinco artes.
 
 Partículas e filamentos compartilham tempo, paleta e máscaras, usando o mesmo loop/canvas. As regiões de interesse são específicas para os rostos de cada arte e para os dois guerreiros pequenos ao fundo de Black Freeza. O cálculo neutraliza translate do picture e scale do img antes de armazenar a caixa de repouso, considera `contain`/`cover` e a posição real da imagem, e adiciona margem para a entrada e o parallax. O interior dos retângulos permanece com alpha zero; o fade de 12 px começa pelo lado externo. Coordenadas e limites estão em [three.md](three.md#proteção-do-conteúdo).
 
 O progresso de scroll é conectado diretamente às animações pelo Motion, usando `ScrollTimeline` quando suportado. O bridge compartilhado evita outro sistema de medição para o Three.js. Não há atualização de estado React por pixel, animação de width/height, filtros pesados ou `will-change` permanente. Observers de texto/arte, listeners, timelines e registro de progresso são liberados na desmontagem ou mudança de preferência.
 
 ## Verificações e revisão de energia
+
+Em **20 de outubro de 2026**, a integração com a aura e o contêiner de perspectiva passou por nova QA em 360/768/1440 px. Foram conferidos movimento automático, ponteiro, rolagem nos dois sentidos, resize 1440 → 768 → 360 → 1440, CTA, teclado e preferência reduzida inicial/dinâmica. A matriz no compacto permaneceu identidade e os textos ficaram disponíveis. A pausa de render por visibilidade foi verificada com evento sintético. O build final tem `scene-motion` em **18,83 kB / 7,35 kB gzip**, `scene-progress` em **0,70 kB / 0,39 kB gzip** e `energy-scene` em **590,89 kB / 152,48 kB gzip**. Lint e TypeScript passaram; o smoke compilado também. Evidências e limites em [validation.md](validation.md).
 
 Lint, typecheck e o build final da revisão de energia passaram. A ampliação recebeu nova QA em 360/768/1440 px para máscaras WebGL, resposta da esfera, movimento reduzido, fallbacks e cleanup. O smoke compilado também passou nos cenários normal, reduzido e de falha dos módulos Three/Motion. As verificações detalhadas de navegação abaixo pertencem à composição anterior publicada no commit `b2da19d`; o módulo Motion não foi alterado pela ampliação.
 

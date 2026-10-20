@@ -24,19 +24,21 @@ export function SagaSection({ saga }: SagaSectionProps) {
     >
       <div className="saga-section__edge" aria-hidden="true" data-scene-part="edge" />
       <div className="saga-section__art" data-scene-part="art">
-        <picture>
-          <img
-            src={saga.artwork.desktop}
-            srcSet={saga.artwork.srcSet}
-            sizes="(max-width: 600px) 148vw, 100vw"
-            width={saga.artwork.width}
-            height={saga.artwork.height}
-            alt={saga.artwork.alt}
-            loading="lazy"
-            decoding="async"
-            data-protect-region={saga.artwork.protectedRegions}
-          />
-        </picture>
+        <div className="art-depth-surface" data-depth-surface>
+          <picture>
+            <img
+              src={saga.artwork.desktop}
+              srcSet={saga.artwork.srcSet}
+              sizes="(max-width: 600px) 148vw, 100vw"
+              width={saga.artwork.width}
+              height={saga.artwork.height}
+              alt={saga.artwork.alt}
+              loading="lazy"
+              decoding="async"
+              data-protect-region={saga.artwork.protectedRegions}
+            />
+          </picture>
+        </div>
       </div>
       <div className="saga-section__content page-container">
         <header className="saga-section__heading" data-scene-part="heading">

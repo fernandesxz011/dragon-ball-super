@@ -11,11 +11,13 @@ export const effectQuality = {
     particles: 200, maxDpr: 1.5, renderInterval: 1000 / 45,
     particleMinSize: 6, particleMaxSize: 18,
     ribbonCoreWidth: 1.65, ribbonGlowWidth: 12, ribbonStrength: 1.15,
+    auraTextureSize: 1024, auraWideBlur: 18, auraRimBlur: 2.2, auraStrength: 1.1,
   },
   compact: {
     particles: 64, maxDpr: 1, renderInterval: 1000 / 30,
     particleMinSize: 4, particleMaxSize: 10,
     ribbonCoreWidth: 1.35, ribbonGlowWidth: 9, ribbonStrength: 1,
+    auraTextureSize: 640, auraWideBlur: 14, auraRimBlur: 2, auraStrength: 1,
   },
 } as const
 
@@ -43,6 +45,22 @@ export const orbInteraction = {
   floatAmplitude: 0.045,
   easing: 6,
 } as const
+
+export const artDepth = {
+  maxTilt: Math.PI / 150,
+  scale: 1.012,
+  minPerspective: 1100,
+  perspectiveWidth: 1.2,
+  easing: 4,
+  artSettleMs: 1000,
+  auraFadeMs: 350,
+  parallaxDistance: 36,
+} as const
+
+export const auraDissolve: Record<string, readonly [number, number]> = {
+  intro: [0.59, 0.76],
+  'black-freeza': [0.78, 0.96],
+}
 
 export const maxProtectedRects = 24
 export const maxBufferDimension = 4096

@@ -11,6 +11,7 @@ interface SceneProgress {
   top: number
   height: number
   viewportHeight: number
+  artEnteredAt: number | undefined
 }
 
 const scenes = new Map<string, SceneProgress>()
@@ -19,9 +20,12 @@ let scrollPosition = 0
 // Motion owns the scroll measurements. Three reads this small mutable bridge,
 // so neither a second scroll listener nor React updates per frame are needed.
 export function registerSceneProgress(id: string) {
-  const entry: SceneProgress = { id, progress: 0, top: 0, height: 0, viewportHeight: 0 }
+  const entry: SceneProgress = { id, progress: 0, top: 0, height: 0, viewportHeight: 0, artEnteredAt: id === 'intro' ? 0 : undefined }
   scenes.set(id, entry)
   return {
+    markArtEntered(startTime = performance.now()) {
+      if (scenes.get(id) === entry) entry.artEnteredAt = startTime
+    },
     update(progress: number, axis: ScrollAxis) {
       if (scenes.get(id) !== entry) return
       entry.progress = progress
@@ -49,5 +53,5 @@ export function getSceneView() {
       predominant = entry
     }
   })
-  return { id: predominant?.id, progress: predominant?.progress ?? 0, scrollPosition }
+  return { id: predominant?.id, progress: predominant?.progress ?? 0, artEnteredAt: predominant?.artEnteredAt, scrollPosition }
 }

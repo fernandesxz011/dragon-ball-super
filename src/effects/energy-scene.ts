@@ -1,12 +1,14 @@
 import { Color, OrthographicCamera, Scene, SRGBColorSpace, WebGLRenderer } from 'three'
 import { getSceneView } from '../motion/scene-progress'
-import { energyField, effectQuality, getEffectTheme, maxBufferDimension, maxProtectedRects, orbInteraction } from './config'
+import { artDepth, energyField, effectQuality, getEffectTheme, maxBufferDimension, maxProtectedRects, orbInteraction } from './config'
 import { createDragonBall } from './dragon-ball'
 import { createEnergyParticles } from './particles'
 import { createOrbitalEnergy } from './orbits'
 import { createEnergyRibbons } from './energy-ribbons'
+import { createArtDepth } from './art-depth'
+import { createCharacterAura } from './character-aura'
 
-interface ProtectedRect { left: number; top: number; right: number; bottom: number }
+interface ProtectedRect { left: number; top: number; right: number; bottom: number; image?: boolean }
 
 const protectedSelectors = '.site-header, .saga-index, .about, .site-footer, [data-protect-region], h1, .hero__description, .hero__action-copy p, .explore-link, .saga-section__title-group, .saga-section__description'
 
@@ -29,8 +31,10 @@ function imageLayoutBounds(image: HTMLImageElement) {
 
 function imagePlacement(image: HTMLImageElement, bounds: DOMRect) {
   const style = window.getComputedStyle(image)
-  const imageRatio = image.naturalWidth / image.naturalHeight
-    || Number(image.getAttribute('width')) / Number(image.getAttribute('height'))
+  // Source dimensions stay stable before decode and avoid the integer rounding
+  // of naturalWidth/naturalHeight on width-descriptor srcsets.
+  const imageRatio = Number(image.getAttribute('width')) / Number(image.getAttribute('height'))
+    || image.naturalWidth / image.naturalHeight
     || bounds.width / Math.max(1, bounds.height)
   if (style.objectFit !== 'cover' && style.objectFit !== 'contain') {
     return { left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height }
@@ -72,6 +76,9 @@ export function createEnergyScene(host: HTMLElement, desktop: boolean) {
     releases.reverse().forEach((release) => { try { release() } catch { /* Continue releasing. */ } })
     releases.length = 0
     slot!.removeAttribute('data-orb-rendered')
+    host.removeAttribute('data-effect-aura')
+    host.removeAttribute('data-effect-aura-textures')
+    host.removeAttribute('data-effect-depth')
     canvas.remove()
     if (loseContext) {
       try { context?.getExtension('WEBGL_lose_context')?.loseContext() } catch { /* Context may already be lost. */ }
@@ -93,14 +100,19 @@ export function createEnergyScene(host: HTMLElement, desktop: boolean) {
     camera.position.z = 1000
     const field = createEnergyParticles(quality)
     releases.push(field.dispose)
+    field.points.name = 'foreground-energy-particles'
     const ribbons = createEnergyRibbons(field.uniforms, quality)
     releases.push(ribbons.dispose)
+    const aura = createCharacterAura(field.uniforms, quality)
+    releases.push(aura.dispose)
+    const depth = createArtDepth(desktop)
+    releases.push(depth.dispose)
     const ball = createDragonBall()
     releases.push(ball.dispose)
     const orbits = createOrbitalEnergy()
     releases.push(orbits.dispose)
     ball.group.add(orbits.group)
-    scene.add(ribbons.mesh, field.points, ball.group)
+    scene.add(aura.mesh, ribbons.mesh, field.points, ball.group)
 
     let layoutDirty = true
     let width = 1
@@ -114,6 +126,10 @@ export function createEnergyScene(host: HTMLElement, desktop: boolean) {
     let protectedRects: ProtectedRect[] = []
     const artworkRects = new Map<string, ProtectedRect>()
     releases.push(() => artworkRects.clear())
+    const fullArtworkRects = new Map<string, ProtectedRect>()
+    releases.push(() => fullArtworkRects.clear())
+    const artworkClips = new Map<string, ProtectedRect>()
+    releases.push(() => artworkClips.clear())
     let mouseX: number | undefined
     let mouseY: number | undefined
     let easedX = 0
@@ -122,6 +138,10 @@ export function createEnergyScene(host: HTMLElement, desktop: boolean) {
     releases.push(() => themeColors.clear())
 
     function refreshLayout() {
+      depth.measure(readLayout)
+    }
+
+    function readLayout() {
       width = Math.max(1, host.clientWidth)
       height = Math.max(1, host.clientHeight)
       dpr = Math.min(window.devicePixelRatio || 1, quality.maxDpr, maxBufferDimension / width, maxBufferDimension / height)
@@ -135,7 +155,7 @@ export function createEnergyScene(host: HTMLElement, desktop: boolean) {
       const scrollY = window.scrollY
       const rect = slot!.getBoundingClientRect()
       slotRect = { left: rect.left, right: rect.right, top: rect.top + scrollY, bottom: rect.bottom + scrollY }
-      protectedRects = Array.from(document.querySelectorAll<HTMLElement>(protectedSelectors)).flatMap((element) => {
+      protectedRects = Array.from(document.querySelectorAll<HTMLElement>(protectedSelectors)).flatMap<ProtectedRect>((element) => {
         const bounds = element instanceof HTMLImageElement
           ? imageLayoutBounds(element) : element.getBoundingClientRect()
         if (element.dataset.protectRegion && element instanceof HTMLImageElement) {
@@ -149,6 +169,7 @@ export function createEnergyScene(host: HTMLElement, desktop: boolean) {
               && values.every(Number.isFinite) && values[2] > 0 && values[3] > 0
               ? values : [0, 0, 1, 1]
             return {
+              image: true,
               left: Math.max(bounds.left, placement.left + placement.width * x) - horizontalPadding,
               right: Math.min(bounds.right, placement.left + placement.width * (x + regionWidth)) + horizontalPadding,
               top: Math.max(bounds.top, placement.top + placement.height * y) + scrollY - verticalPadding,
@@ -161,11 +182,21 @@ export function createEnergyScene(host: HTMLElement, desktop: boolean) {
         return [{ left: bounds.left - padding, right: bounds.right + padding, top: bounds.top + scrollY - padding, bottom: bounds.bottom + scrollY + padding }]
       })
       artworkRects.clear()
+      fullArtworkRects.clear()
+      artworkClips.clear()
       document.querySelectorAll<HTMLElement>('[data-scene]').forEach((element) => {
         const image = element.querySelector<HTMLImageElement>('img[data-protect-region]')
         if (!image || !element.dataset.scene) return
         const bounds = imageLayoutBounds(image)
         const placement = imagePlacement(image, bounds)
+        fullArtworkRects.set(element.dataset.scene, {
+          left: placement.left, right: placement.left + placement.width,
+          top: placement.top + scrollY, bottom: placement.top + placement.height + scrollY,
+        })
+        const clip = image.closest<HTMLElement>('.hero__media, .saga-section__art')?.getBoundingClientRect() ?? bounds
+        artworkClips.set(element.dataset.scene, {
+          left: clip.left, right: clip.right, top: clip.top + scrollY, bottom: clip.bottom + scrollY,
+        })
         artworkRects.set(element.dataset.scene, {
           left: Math.max(bounds.left, placement.left),
           right: Math.min(bounds.right, placement.left + placement.width),
@@ -185,13 +216,16 @@ export function createEnergyScene(host: HTMLElement, desktop: boolean) {
 
     function updateMasks(scrollY: number) {
       let count = 0
+      let auraCount = 0
       protectedRects.forEach((rect) => {
         const top = rect.top - scrollY
         const bottom = rect.bottom - scrollY
-        if (bottom < 0 || top > height || count >= maxProtectedRects) return
-        field.uniforms.uRects.value[count++].set(rect.left, top, rect.right, bottom)
+        if (bottom < 0 || top > height) return
+        if (count < maxProtectedRects) field.uniforms.uRects.value[count++].set(rect.left, top, rect.right, bottom)
+        if (!rect.image && auraCount < maxProtectedRects) aura.uniforms.uRects.value[auraCount++].set(rect.left, top, rect.right, bottom)
       })
       field.uniforms.uRectCount.value = count
+      aura.uniforms.uRectCount.value = auraCount
       const top = slotRect.top - scrollY
       ball.group.visible = top < height && slotRect.bottom - scrollY > 0
       ball.group.position.set((slotRect.left + slotRect.right) / 2 - width / 2, height / 2 - (top + (slotRect.bottom - slotRect.top) / 2), 0)
@@ -222,6 +256,34 @@ export function createEnergyScene(host: HTMLElement, desktop: boolean) {
         const artwork = view.id ? artworkRects.get(view.id) : undefined
         ribbons.mesh.visible = !!artwork && artwork.bottom > scrollY && artwork.top < scrollY + height
         if (artwork) ribbons.uniforms.uArtwork.value.set(artwork.left, artwork.top - scrollY, artwork.right, artwork.bottom - scrollY)
+
+        const enteredAt = view.artEnteredAt
+        const settled = enteredAt === 0 || (enteredAt !== undefined && time - enteredAt >= artDepth.artSettleMs)
+        depth.update({
+          activeId: view.id, settled, time: elapsed, delta, progress: view.progress,
+          scrollY, viewportHeight: height,
+          mouseX: pointerEnabled ? mouseX : undefined, mouseY: pointerEnabled ? mouseY : undefined,
+        })
+        const surface = view.id ? depth.get(view.id) : undefined
+        const auraImage = view.id ? fullArtworkRects.get(view.id) : undefined
+        const auraClip = view.id ? artworkClips.get(view.id) : undefined
+        const auraVisible = !!(settled && view.id && surface && auraImage && auraClip && artwork
+          && artwork.bottom > scrollY && artwork.top < scrollY + height)
+        aura.mesh.visible = auraVisible && aura.select(view.id!)
+        if (aura.mesh.visible && surface && auraImage && auraClip) {
+          const parallax = desktop && view.id !== 'intro' ? artDepth.parallaxDistance * (1 - 2 * view.progress) : 0
+          aura.uniforms.uImage.value.set(auraImage.left, auraImage.top - scrollY + parallax, auraImage.right, auraImage.bottom - scrollY + parallax)
+          aura.uniforms.uFrame.value.set(auraClip.left, auraClip.top - scrollY, auraClip.right, auraClip.bottom - scrollY)
+          aura.uniforms.uSurfaceCenter.value.set(surface.left + surface.width / 2, surface.top - scrollY + surface.height / 2)
+          aura.uniforms.uArtMatrix.value.copy(surface.matrix)
+          aura.uniforms.uAuraOpacity.value = enteredAt === 0 ? 1 : Math.min(1, Math.max(0, (time - enteredAt! - artDepth.artSettleMs) / artDepth.auraFadeMs))
+        }
+        const auraStatus = aura.mesh.visible ? view.id! : auraVisible ? 'fallback' : 'hidden'
+        if (host.dataset.effectAura !== auraStatus) host.dataset.effectAura = auraStatus
+        const textureCount = String(aura.textureCount)
+        if (host.dataset.effectAuraTextures !== textureCount) host.dataset.effectAuraTextures = textureCount
+        const depthMode = desktop ? 'full' : 'identity'
+        if (host.dataset.effectDepth !== depthMode) host.dataset.effectDepth = depthMode
 
         let targetX = 0
         let targetY = 0
